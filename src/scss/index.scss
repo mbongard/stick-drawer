@@ -1,0 +1,16 @@
+@import 'mixins';
+@import 'reset';
+@import 'settings';
+@import 'global';
+
+* {
+  box-sizing: border-box;
+  image-rendering: -webkit-optimize-contrast;
+}
+
+body {
+  overflow-x: hidden;
+  background-color: white;
+  color: var(--black);
+  text-align: center;
+}

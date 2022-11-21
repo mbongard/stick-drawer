@@ -1,0 +1,74 @@
+@import '../../scss/settings.scss';
+
+.Graph {
+  position: relative;
+  margin: 2.5rem auto auto;
+  width: 60vw;
+  height: 80vh;
+  min-height: 20rem;
+  border: 1px solid var(--theme);
+  border-radius: 0.25rem;
+
+  &-Container {
+    display: flex;
+    gap: 3rem;
+
+    button {
+      background-color: #cfb37d;
+      padding: 0.5rem 0.75rem;
+      border-radius: 0.5rem;
+      width: fit-content;
+      margin: auto 0 auto auto;
+
+      &:hover {
+        cursor: pointer;
+      }
+    }
+  }
+
+  #my-network {
+    width: 100%;
+    height: 100%;
+  }
+
+  &-FigureButtons {
+    display: flex;
+    gap: 2rem;
+    justify-content: center;
+    width: 30rem;
+    margin: 2rem 0 3rem 0;
+
+    button {
+      margin: 0;
+    }
+  }
+
+  &-Controls {
+    margin: 2rem auto;
+    width: 30rem;
+  }
+
+  &-GroupEdit {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    border: 1px solid #333;
+    padding: 1rem;
+    margin: 1rem 0;
+
+    &-Title {
+      font-weight: 600;
+      font-size: 1.2rem;
+    }
+  }
+
+  &-RowEdit {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+  }
+
+  &-SliderValue {
+    width: 1.5rem;
+  }
+}
