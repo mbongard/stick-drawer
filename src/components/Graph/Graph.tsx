@@ -7,14 +7,48 @@ interface WindowInterface extends Window {
   network: Network;
   nodes: DataSet<any, 'id'>;
   edges: DataSet<any, 'id'>;
+  options: any;
+}
+
+interface StickFigure {
+  nodes: DataSet<any>;
+  edges: DataSet<Edge>;
 }
 
 const OPTIONS = {
-  physics: false,
+  physics: {
+    enabled: true,
+    barnesHut: {
+      theta: 0.5,
+      gravitationalConstant: -2000,
+      centralGravity: 0,
+      springLength: 20,
+      springConstant: 1,
+      damping: 0.09,
+      avoidOverlap: 0,
+    },
+    forceAtlas2Based: {
+      theta: 0.5,
+      gravitationalConstant: -50,
+      centralGravity: 0,
+      springConstant: 0.08,
+      springLength: 1,
+      damping: 0.4,
+      avoidOverlap: 0,
+    },
+    repulsion: {
+      centralGravity: 0,
+      springLength: 20,
+      springConstant: 1,
+      nodeDistance: 20,
+      damping: 0.09,
+    },
+    solver: 'barnesHut',
+  },
   nodes: {
+    shape: 'dot',
     color: '#343434',
-    widthConstraint: 5,
-    heightConstraint: 5,
+    size: 5,
   },
   edges: {
     smooth: {
@@ -26,9 +60,37 @@ const OPTIONS = {
   },
 };
 
-const STICK_FIGURE_1 = {
+const STICK_FIGURE_1: StickFigure = {
   nodes: new DataSet<any>([
-    { id: 1, x: 0, y: 0, widthConstraint: 20, heightConstraint: 20 },
+    { id: 1, x: 0, y: 0, size: 20 },
+    { id: 2, x: 0, y: 50 },
+    { id: 3, x: -20, y: 50 },
+    { id: 4, x: 20, y: 50 },
+    { id: 5, x: 0, y: 150 },
+    { id: 6, x: -50, y: 250 },
+    { id: 7, x: 50, y: 250 },
+    { id: 8, x: -100, y: 100 },
+    { id: 9, x: -150, y: 100 },
+    { id: 10, x: 100, y: 100 },
+    { id: 11, x: 150, y: 100 },
+  ]),
+  edges: new DataSet<Edge>([
+    { id: 1, from: 1, to: 2, length: 50 },
+    { id: 2, from: 2, to: 3, length: 20 },
+    { id: 3, from: 2, to: 4, length: 20 },
+    { id: 4, from: 2, to: 5, length: 100 },
+    { id: 5, from: 5, to: 6, length: 50 },
+    { id: 6, from: 5, to: 7, length: 50 },
+    { id: 7, from: 3, to: 8, length: 50 },
+    { id: 8, from: 8, to: 9, length: 50 },
+    { id: 9, from: 4, to: 10, length: 50 },
+    { id: 10, from: 10, to: 11, length: 50 },
+  ]),
+};
+
+const STICK_FIGURE_3: StickFigure = {
+  nodes: new DataSet<any>([
+    { id: 1, x: 0, y: 0, size: 20 },
     { id: 2, x: 0, y: 50 },
     { id: 3, x: -50, y: 100 },
     { id: 4, x: 50, y: 100 },
@@ -46,9 +108,9 @@ const STICK_FIGURE_1 = {
   ]),
 };
 
-const STICK_FIGURE_2 = {
+const STICK_FIGURE_2: StickFigure = {
   nodes: new DataSet<any>([
-    { id: 1, x: 0, y: 0, widthConstraint: 20, heightConstraint: 20 },
+    { id: 1, x: 0, y: 0, size: 20 },
     { id: 2, x: 0, y: 50 },
     { id: 3, x: -50, y: 100 },
     { id: 4, x: 50, y: 100 },
@@ -71,64 +133,68 @@ const STICK_FIGURE_2 = {
   ]),
 };
 
-type GraphData = {
-  nodes: any;
-  edges: any;
-  options: any;
-  viewPort?: any;
-  scale?: number;
-};
-
 const Graph = (): JSX.Element => {
   const networkRef = React.createRef<HTMLDivElement>();
-  const [graphData, setGraphData] = useState<GraphData>();
-  const [network, setNetwork] = useState<Network>();
+  const fixedCheckboxRef = React.createRef<HTMLInputElement>();
   const [editNode, setEditNode] = useState<number>();
   const [editEdge, setEditEdge] = useState<number>();
+  const [network, setNetwork] = useState<Network>();
+  const [, updateState] = useState<any>();
 
   let windowInt: WindowInterface = window as unknown as WindowInterface;
 
-  useEffect(() => {
-    loadFigure(STICK_FIGURE_1);
-  }, []);
+  const forceUpdate = React.useCallback(() => updateState({}), []);
 
-  useEffect(() => {
-    initializeNetwork();
-  }, [graphData]);
+  useEffect(() => initializeNetwork(), []);
+
+  useEffect(() => loadFigure(STICK_FIGURE_1), [network]);
 
   const initializeNetwork = (): void => {
     if (networkRef?.current) {
-      const newNetwork = new Network(
-        networkRef.current,
-        { nodes: graphData?.nodes, edges: graphData?.edges },
-        graphData?.options,
-      );
+      const newNetwork = new Network(networkRef.current, {}, OPTIONS);
 
-      newNetwork.moveTo({
-        position: graphData?.viewPort,
-        scale: graphData?.scale,
-      });
       newNetwork.on('click', onClick);
       newNetwork.on('dragStart', onDragStart);
       newNetwork.on('dragEnd', onDragEnd);
+      newNetwork.on('deselectNode', onDeselect);
+      newNetwork.on('deselectEdge', onDeselect);
 
       windowInt.network = newNetwork;
+      windowInt.options = OPTIONS;
       setNetwork(newNetwork);
     }
   };
 
-  const loadFigure = (stickFigure: any): void => {
-    setGraphData({ ...stickFigure, options: OPTIONS, scale: 2 });
+  const loadFigure = (stickFigure: StickFigure): void => {
+    const nodesDataSet = stickFigure.nodes;
+    const edgesDataSet = stickFigure.edges;
+
+    network?.setData({ nodes: nodesDataSet, edges: edgesDataSet });
+
+    windowInt.nodes = nodesDataSet;
+    windowInt.edges = edgesDataSet;
   };
 
   const onClick = (clickProps: any): void => {
     const nodeId = clickProps.nodes[0];
     const edgeId = clickProps.edges[0];
     updateEdit(nodeId, edgeId);
+    forceUpdate();
   };
 
-  const onDragStart = (eventProps: any): void => {
-    updateEdit(eventProps.nodes[0]);
+  const onDeselect = (): void => {
+    updateEdit(undefined, undefined);
+    forceUpdate();
+  };
+
+  const onDragStart = (event: any): void => {
+    if (event.nodes[0]?.fixed) {
+      debugger;
+      event.preventDefault();
+    } else {
+      updateEdit(event.nodes[0]);
+      forceUpdate();
+    }
   };
 
   const updateEdit = (nodeId?: number, edgeId?: number): void => {
@@ -144,56 +210,44 @@ const Graph = (): JSX.Element => {
     }
   };
 
-  const onDragEnd = (eventProps: any): void => {
-    if (eventProps.nodes.length === 1) {
-      graphData?.nodes.map((n: any) => {
-        if (n.id === eventProps.nodes[0]) {
-          n.x = Math.round(eventProps.pointer.canvas.x * 10) / 10;
-          n.y = Math.round(eventProps.pointer.canvas.y * 10) / 10;
-        }
-        return n;
+  const onDragEnd = (event: any): void => {
+    if (event.nodes.length === 1) {
+      const position = windowInt.network.getPosition(event.nodes[0]);
+      windowInt.nodes?.update({
+        id: event.nodes[0],
+        x: Math.round(position.x * 10) / 10,
+        y: Math.round(position.y * 10) / 10,
       });
-      updateGraphData();
+      forceUpdate();
     }
-  };
-
-  const currentSize = (): number => {
-    if (editNode) {
-      if (getNode(editNode).widthConstraint) {
-        return getNode(editNode).widthConstraint;
-      }
-      return OPTIONS.nodes.widthConstraint;
-    }
-    return -1;
   };
 
   const getNode = (id: number): any => {
-    return graphData?.nodes?.get(id);
+    return windowInt.nodes?.get(id);
   };
 
   const getEdge = (id: number): any => {
-    return graphData?.edges?.get(id);
+    return windowInt.edges?.get(id);
   };
 
   const getDefaultNodeSize = (): number => {
-    if (graphData?.options) {
-      return graphData.options.nodes.widthConstraint;
-    }
-    return 0;
+    return windowInt.options?.nodes.size ?? 0;
   };
 
   const setDefaultNodeSize = (event: ChangeEvent<HTMLInputElement>): void => {
-    if (graphData) {
-      graphData.options.nodes.widthConstraint = +event.target.value;
-      graphData.options.nodes.heightConstraint = +event.target.value;
-      updateGraphData();
-    }
+    windowInt.options.nodes.size = +event.target.value;
+    windowInt.network.setOptions({
+      nodes: {
+        size: +event.target.value,
+      },
+    });
+    forceUpdate();
     event.preventDefault();
   };
 
   const getNodeSize = (): number => {
     if (editNode) {
-      const nodeSize = getNode(editNode).widthConstraint;
+      const nodeSize = getNode(editNode).size;
       if (nodeSize) {
         return nodeSize;
       }
@@ -203,14 +257,12 @@ const Graph = (): JSX.Element => {
   };
 
   const setNodeSize = (event: ChangeEvent<HTMLInputElement>): void => {
-    if (graphData && editNode) {
-      graphData.nodes.map((n: any) => {
-        if (n.id === editNode) {
-          n.widthConstraint = +event.target.value;
-          n.heightConstraint = +event.target.value;
-        }
+    if (editNode) {
+      windowInt.nodes?.update({
+        id: editNode,
+        size: +event.target.value,
       });
-      updateGraphData();
+      forceUpdate();
     }
     event.preventDefault();
   };
@@ -229,72 +281,84 @@ const Graph = (): JSX.Element => {
   };
 
   const setRoundness = (event: ChangeEvent<HTMLInputElement>): void => {
-    if (graphData && editEdge) {
-      graphData.edges.map((n: any) => {
-        if (n.id === editEdge) {
-          const roundness = +event.target.value;
+    if (editEdge) {
+      const roundness = +event.target.value;
 
-          n.smooth = {
-            enabled: roundness !== 0,
-            type: roundness < 0 ? 'curvedCCW' : 'curvedCW',
-            forceDirection: false,
-            roundness: roundness < 0 ? -roundness : roundness,
-          };
-        }
+      windowInt.edges?.update({
+        id: editEdge,
+        smooth: {
+          enabled: roundness !== 0,
+          type: roundness < 0 ? 'curvedCCW' : 'curvedCW',
+          forceDirection: false,
+          roundness: roundness < 0 ? -roundness : roundness,
+        },
       });
-      updateGraphData();
+      forceUpdate();
     }
     event.preventDefault();
   };
 
   const handleDecoupleNodeSize = (): void => {
-    graphData?.nodes.map((n: any) => {
-      if (n.id === editNode) {
-        n.widthConstraint = undefined;
-        n.heightConstraint = undefined;
-      }
+    windowInt.nodes?.update({
+      id: editNode,
+      size: null,
     });
-    updateGraphData();
-  };
-
-  const updateGraphData = (): void => {
-    const viewPort = windowInt.network.getViewPosition();
-    const scale = windowInt.network.getScale();
-    setGraphData({ ...graphData, viewPort, scale } as GraphData);
+    forceUpdate();
   };
 
   const getXCoordinate = (): number => {
     if (editNode) {
-      return getNode(editNode).x;
+      return windowInt.network.getPosition(editNode).x;
     }
     return 0;
   };
 
   const getYCoordinate = (): number => {
     if (editNode) {
-      return getNode(editNode).y;
+      return windowInt.network.getPosition(editNode).y;
     }
     return 0;
   };
 
   const updateXCoordinate = (event: any): void => {
-    graphData?.nodes.map((n: any) => {
-      if (n.id === editNode) {
-        n.x = event.target.value;
-      }
-      return n;
-    });
-    updateGraphData();
+    if (!isNaN(parseFloat(event.target.value))) {
+      windowInt.nodes?.update({
+        id: editNode,
+        x: +event.target.value,
+      });
+      forceUpdate();
+    }
   };
 
   const updateYCoordinate = (event: any): void => {
-    graphData?.nodes.map((n: any) => {
-      if (n.id === editNode) {
-        n.y = event.target.value;
-      }
-      return n;
+    if (!isNaN(parseFloat(event.target.value))) {
+      windowInt.nodes?.update({
+        id: editNode,
+        y: +event.target.value,
+      });
+      forceUpdate();
+    }
+  };
+
+  const getFixed = (): boolean => {
+    if (editNode) {
+      return windowInt.nodes.get(editNode).fixed ?? false;
+    }
+    return false;
+  };
+
+  const updateFixed = (): void => {
+    windowInt.nodes?.update({
+      id: editNode,
+      fixed: fixedCheckboxRef.current?.checked,
     });
-    updateGraphData();
+    forceUpdate();
+  };
+
+  const togglePhysics = (): void => {
+    windowInt.options.physics = !windowInt.options.physics;
+    windowInt.network.setOptions({ physics: windowInt.options.physics });
+    forceUpdate();
   };
 
   return (
@@ -313,16 +377,25 @@ const Graph = (): JSX.Element => {
         </div>
         <div className="Graph-GroupEdit">
           <div className="Graph-GroupEdit-Title">Allgemein</div>
+          <button onClick={togglePhysics}>
+            {windowInt.options?.physics ? (
+              <span>Physik ausschalten</span>
+            ) : (
+              <span>Physik einschalten</span>
+            )}
+          </button>
           <div className="Graph-RowEdit">
             <div>Standard Knoten Grösse</div>
-            <input
-              type="range"
-              min="0.1"
-              max="20"
-              step={0.1}
-              value={getDefaultNodeSize()}
-              onChange={setDefaultNodeSize}
-            ></input>
+            <div className="Graph-RowValue">
+              <input
+                type="range"
+                min="0.1"
+                max="20"
+                step={0.1}
+                value={getDefaultNodeSize()}
+                onChange={setDefaultNodeSize}
+              ></input>
+            </div>
             <div className="Graph-SliderValue">{getDefaultNodeSize()}</div>
           </div>
         </div>
@@ -331,31 +404,51 @@ const Graph = (): JSX.Element => {
             <div className="Graph-GroupEdit-Title">Knoten {editNode}</div>
             <div className="Graph-RowEdit">
               <div>X-Koordinate</div>
-              <input
-                type="number"
-                value={getXCoordinate()}
-                onChange={updateXCoordinate}
-              />
+              <div className="Graph-RowValue">
+                <input
+                  type="number"
+                  value={getXCoordinate()}
+                  onChange={updateXCoordinate}
+                />
+              </div>
             </div>
             <div className="Graph-RowEdit">
               <div>Y-Koordinate</div>
-              <input
-                type="number"
-                value={getYCoordinate()}
-                onChange={updateYCoordinate}
-              />
+              <div className="Graph-RowValue">
+                <input
+                  type="number"
+                  value={getYCoordinate()}
+                  onChange={updateYCoordinate}
+                />
+              </div>
+            </div>
+            <div className="Graph-RowEdit">
+              <div>Position fixieren</div>
+              <div className="Graph-RowValue">
+                <label className="Switch-Container">
+                  <input
+                    type="checkbox"
+                    checked={getFixed()}
+                    onChange={updateFixed}
+                    ref={fixedCheckboxRef}
+                  />
+                  <span className="Switch-Slider Switch-Round"></span>
+                </label>
+              </div>
             </div>
             <div className="Graph-RowEdit">
               <div>Individuelle Knoten Grösse</div>
-              <input
-                type="range"
-                min="0.1"
-                max="20"
-                step={0.1}
-                value={getNodeSize()}
-                onChange={setNodeSize}
-              ></input>
-              <div className="Graph-SliderValue">{getNodeSize()}</div>
+              <div className="Graph-RowValue">
+                <input
+                  type="range"
+                  min="0.1"
+                  max="20"
+                  step={0.1}
+                  value={getNodeSize()}
+                  onChange={setNodeSize}
+                ></input>
+                <div className="Graph-SliderValue">{getNodeSize()}</div>
+              </div>
             </div>
             <button onClick={handleDecoupleNodeSize}>
               Grösse zurücksetzen
@@ -367,15 +460,17 @@ const Graph = (): JSX.Element => {
             <div className="Graph-GroupEdit-Title">Kante {editEdge}</div>
             <div className="Graph-RowEdit">
               <div>Bogen</div>
-              <input
-                type="range"
-                min="-0.5"
-                max="0.5"
-                step={0.1}
-                value={getRoundness()}
-                onChange={setRoundness}
-              ></input>
-              <div className="Graph-SliderValue">{getRoundness()}</div>
+              <div className="Graph-RowValue">
+                <input
+                  type="range"
+                  min="-0.5"
+                  max="0.5"
+                  step={0.1}
+                  value={getRoundness()}
+                  onChange={setRoundness}
+                ></input>
+                <div className="Graph-SliderValue">{getRoundness()}</div>
+              </div>
             </div>
           </div>
         )}
