@@ -1,6 +1,7 @@
 import React, { ChangeEvent, useEffect, useRef, useState } from 'react';
 import 'vis-network/styles/vis-network.css';
 import { Network, DataSet, Node, Edge, Options } from 'vis-network/standalone';
+
 import './Graph.scss';
 import {
   StickFigure,
