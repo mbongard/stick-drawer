@@ -1,18 +1,22 @@
-import React, { ChangeEvent, useEffect, useState } from 'react';
+import React, { ChangeEvent, useEffect, useRef, useState } from 'react';
 import 'vis-network/styles/vis-network.css';
 import { Network, DataSet, Node, Edge, Options } from 'vis-network/standalone';
 import './Graph.scss';
+import {
+  StickFigure,
+  STICK_FIGURE_1,
+  STICK_FIGURE_2,
+  STICK_FIGURE_3,
+  STICK_FIGURE_4,
+  STICK_FIGURE_5,
+  STICK_FIGURE_6,
+} from './stickfigures';
 
 interface WindowInterface extends Window {
   network: Network;
   nodes: DataSet<any, 'id'>;
   edges: DataSet<any, 'id'>;
   options: any;
-}
-
-interface StickFigure {
-  nodes: DataSet<any>;
-  edges: DataSet<Edge>;
 }
 
 const OPTIONS = {
@@ -26,22 +30,6 @@ const OPTIONS = {
       springConstant: 1,
       damping: 0.09,
       avoidOverlap: 0,
-    },
-    forceAtlas2Based: {
-      theta: 0.5,
-      gravitationalConstant: -50,
-      centralGravity: 0,
-      springConstant: 0.08,
-      springLength: 1,
-      damping: 0.4,
-      avoidOverlap: 0,
-    },
-    repulsion: {
-      centralGravity: 0,
-      springLength: 20,
-      springConstant: 1,
-      nodeDistance: 20,
-      damping: 0.09,
     },
     solver: 'barnesHut',
   },
@@ -60,82 +48,10 @@ const OPTIONS = {
   },
 };
 
-const STICK_FIGURE_1: StickFigure = {
-  nodes: new DataSet<any>([
-    { id: 1, x: 0, y: 0, size: 20 },
-    { id: 2, x: 0, y: 50 },
-    { id: 3, x: -20, y: 50 },
-    { id: 4, x: 20, y: 50 },
-    { id: 5, x: 0, y: 150 },
-    { id: 6, x: -50, y: 250 },
-    { id: 7, x: 50, y: 250 },
-    { id: 8, x: -100, y: 100 },
-    { id: 9, x: -150, y: 100 },
-    { id: 10, x: 100, y: 100 },
-    { id: 11, x: 150, y: 100 },
-  ]),
-  edges: new DataSet<Edge>([
-    { id: 1, from: 1, to: 2, length: 50 },
-    { id: 2, from: 2, to: 3, length: 20 },
-    { id: 3, from: 2, to: 4, length: 20 },
-    { id: 4, from: 2, to: 5, length: 100 },
-    { id: 5, from: 5, to: 6, length: 50 },
-    { id: 6, from: 5, to: 7, length: 50 },
-    { id: 7, from: 3, to: 8, length: 50 },
-    { id: 8, from: 8, to: 9, length: 50 },
-    { id: 9, from: 4, to: 10, length: 50 },
-    { id: 10, from: 10, to: 11, length: 50 },
-  ]),
-};
-
-const STICK_FIGURE_3: StickFigure = {
-  nodes: new DataSet<any>([
-    { id: 1, x: 0, y: 0, size: 20 },
-    { id: 2, x: 0, y: 50 },
-    { id: 3, x: -50, y: 100 },
-    { id: 4, x: 50, y: 100 },
-    { id: 5, x: 0, y: 150 },
-    { id: 6, x: -50, y: 250 },
-    { id: 7, x: 50, y: 250 },
-  ]),
-  edges: new DataSet<Edge>([
-    { id: 1, from: 1, to: 2 },
-    { id: 2, from: 2, to: 3 },
-    { id: 3, from: 2, to: 4 },
-    { id: 4, from: 2, to: 5 },
-    { id: 5, from: 5, to: 6 },
-    { id: 6, from: 5, to: 7 },
-  ]),
-};
-
-const STICK_FIGURE_2: StickFigure = {
-  nodes: new DataSet<any>([
-    { id: 1, x: 0, y: 0, size: 20 },
-    { id: 2, x: 0, y: 50 },
-    { id: 3, x: -50, y: 100 },
-    { id: 4, x: 50, y: 100 },
-    { id: 5, x: 0, y: 150 },
-    { id: 6, x: -10, y: 170 },
-    { id: 7, x: 10, y: 170 },
-    { id: 8, x: -50, y: 250 },
-    { id: 9, x: 50, y: 250 },
-  ]),
-  edges: new DataSet<Edge>([
-    { id: 1, from: 1, to: 2 },
-    { id: 2, from: 2, to: 3 },
-    { id: 3, from: 2, to: 4 },
-    { id: 4, from: 2, to: 5 },
-    { id: 5, from: 5, to: 6 },
-    { id: 6, from: 5, to: 7 },
-    { id: 7, from: 6, to: 7 },
-    { id: 8, from: 6, to: 8 },
-    { id: 9, from: 7, to: 9 },
-  ]),
-};
-
 const Graph = (): JSX.Element => {
-  const networkRef = React.createRef<HTMLDivElement>();
-  const fixedCheckboxRef = React.createRef<HTMLInputElement>();
+  const networkRef = useRef<HTMLDivElement>(null);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
+  const fixedCheckboxRef = useRef<HTMLInputElement>(null);
   const [editNode, setEditNode] = useState<number>();
   const [editEdge, setEditEdge] = useState<number>();
   const [network, setNetwork] = useState<Network>();
@@ -321,20 +237,22 @@ const Graph = (): JSX.Element => {
   };
 
   const updateXCoordinate = (event: any): void => {
-    if (!isNaN(parseFloat(event.target.value))) {
+    let value = event.target.value;
+    if (!isNaN(parseFloat(value))) {
       windowInt.nodes?.update({
         id: editNode,
-        x: +event.target.value,
+        x: +value,
       });
       forceUpdate();
     }
   };
 
   const updateYCoordinate = (event: any): void => {
-    if (!isNaN(parseFloat(event.target.value))) {
+    let value = event.target.value;
+    if (!isNaN(parseFloat(value))) {
       windowInt.nodes?.update({
         id: editNode,
-        y: +event.target.value,
+        y: +value,
       });
       forceUpdate();
     }
@@ -361,31 +279,125 @@ const Graph = (): JSX.Element => {
     forceUpdate();
   };
 
+  const getLength = (): number => {
+    if (editEdge) {
+      return windowInt.edges.get(editEdge).length;
+    }
+    return 0;
+  };
+
+  const setLength = (event: any): void => {
+    if (editEdge) {
+      windowInt.edges.update({
+        id: editEdge,
+        length: +event.target.value,
+      });
+      forceUpdate();
+    }
+  };
+
+  const download = (): void => {
+    const dataStr =
+      'data:text/json;charset=utf-8,' +
+      encodeURIComponent(
+        JSON.stringify(
+          {
+            nodes: windowInt.nodes
+              .get()
+              .map((n) => ({ ...n, ...windowInt.network.getPosition(n.id) })),
+            edges: windowInt.edges.get(),
+            options: windowInt.options,
+          },
+          null,
+          2,
+        ),
+      );
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute('href', dataStr);
+    downloadAnchorNode.setAttribute('download', 'strichmaennli.json');
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  };
+
+  const triggerUpload = (): void => {
+    uploadInputRef.current?.click();
+  };
+
+  const upload = (): void => {
+    if (uploadInputRef.current) {
+      const files = uploadInputRef.current.files;
+      if (files?.length && files.length > 0) {
+        var reader = new FileReader();
+        reader.onload = onReaderLoad;
+        reader.readAsText(files[0]);
+      }
+    }
+  };
+
+  function onReaderLoad(event: any): void {
+    var data: any = JSON.parse(event.target.result);
+    loadFigure({
+      nodes: new DataSet<any>(data.nodes),
+      edges: new DataSet<Edge>(data.edges),
+    } as StickFigure);
+    windowInt.options = data.options;
+    windowInt.network.setOptions(data.options);
+
+    if (uploadInputRef?.current) {
+      // Wipe the value on the input because otherwise Chrome can only upload once
+      uploadInputRef.current.value = '';
+    }
+  }
+
   return (
     <div className="Graph-Container">
       <div className="Graph">
         <div id="my-network" ref={networkRef} />
       </div>
       <div className="Graph-Controls">
+        <div className="Graph-JsonButtons">
+          <button onClick={() => download()}>Strichmännli exportierä</button>
+          <button onClick={() => triggerUpload()}>
+            Strichmännli importierä
+          </button>
+          <input
+            className="InputUpload"
+            type="file"
+            ref={uploadInputRef}
+            onChange={() => upload()}
+          />
+        </div>
         <div className="Graph-FigureButtons">
           <button onClick={() => loadFigure(STICK_FIGURE_1)}>
-            Stick Figure 1
+            Strichmännli 1
           </button>
           <button onClick={() => loadFigure(STICK_FIGURE_2)}>
-            Stick Figure 2
+            Strichmännli 2
+          </button>
+          <button onClick={() => loadFigure(STICK_FIGURE_3)}>
+            Strichmännli 3
+          </button>
+          <button onClick={() => loadFigure(STICK_FIGURE_4)}>
+            Strichmännli 4
+          </button>
+          <button onClick={() => loadFigure(STICK_FIGURE_5)}>
+            Strichmännli 5
+          </button>
+          <button onClick={() => loadFigure(STICK_FIGURE_6)}>
+            Strichmännli 6
           </button>
         </div>
         <div className="Graph-GroupEdit">
-          <div className="Graph-GroupEdit-Title">Allgemein</div>
+          <div className="Graph-GroupEdit-Title">Allgemeini Sache</div>
           <button onClick={togglePhysics}>
             {windowInt.options?.physics ? (
-              <span>Physik ausschalten</span>
+              <span>D&apos;Physik uusschalte</span>
             ) : (
-              <span>Physik einschalten</span>
+              <span>D&apos;Physik wieder iischalte</span>
             )}
           </button>
           <div className="Graph-RowEdit">
-            <div>Standard Knoten Grösse</div>
+            <div>Standard Punkt Grössi</div>
             <div className="Graph-RowValue">
               <input
                 type="range"
@@ -395,15 +407,15 @@ const Graph = (): JSX.Element => {
                 value={getDefaultNodeSize()}
                 onChange={setDefaultNodeSize}
               ></input>
+              <div className="Graph-SliderValue">{getDefaultNodeSize()}</div>
             </div>
-            <div className="Graph-SliderValue">{getDefaultNodeSize()}</div>
           </div>
         </div>
         {editNode && (
           <div className="Graph-GroupEdit">
-            <div className="Graph-GroupEdit-Title">Knoten {editNode}</div>
+            <div className="Graph-GroupEdit-Title">De Punkt {editNode}</div>
             <div className="Graph-RowEdit">
-              <div>X-Koordinate</div>
+              <div>X-Koordinatä</div>
               <div className="Graph-RowValue">
                 <input
                   type="number"
@@ -413,7 +425,7 @@ const Graph = (): JSX.Element => {
               </div>
             </div>
             <div className="Graph-RowEdit">
-              <div>Y-Koordinate</div>
+              <div>Y-Koordinatä</div>
               <div className="Graph-RowValue">
                 <input
                   type="number"
@@ -423,7 +435,7 @@ const Graph = (): JSX.Element => {
               </div>
             </div>
             <div className="Graph-RowEdit">
-              <div>Position fixieren</div>
+              <div>D&apos;Position fixierä</div>
               <div className="Graph-RowValue">
                 <label className="Switch-Container">
                   <input
@@ -437,7 +449,7 @@ const Graph = (): JSX.Element => {
               </div>
             </div>
             <div className="Graph-RowEdit">
-              <div>Individuelle Knoten Grösse</div>
+              <div>Individuelli Punkt Grössi</div>
               <div className="Graph-RowValue">
                 <input
                   type="range"
@@ -450,16 +462,14 @@ const Graph = (): JSX.Element => {
                 <div className="Graph-SliderValue">{getNodeSize()}</div>
               </div>
             </div>
-            <button onClick={handleDecoupleNodeSize}>
-              Grösse zurücksetzen
-            </button>
+            <button onClick={handleDecoupleNodeSize}>Grössi zruggsetze</button>
           </div>
         )}
         {editEdge && (
           <div className="Graph-GroupEdit">
-            <div className="Graph-GroupEdit-Title">Kante {editEdge}</div>
+            <div className="Graph-GroupEdit-Title">De Strich {editEdge}</div>
             <div className="Graph-RowEdit">
-              <div>Bogen</div>
+              <div>D&apos;Kurvigkeit vom Strich</div>
               <div className="Graph-RowValue">
                 <input
                   type="range"
@@ -470,6 +480,20 @@ const Graph = (): JSX.Element => {
                   onChange={setRoundness}
                 ></input>
                 <div className="Graph-SliderValue">{getRoundness()}</div>
+              </div>
+            </div>
+            <div className="Graph-RowEdit">
+              <div>D&apos;Längi vom Strich</div>
+              <div className="Graph-RowValue">
+                <input
+                  type="range"
+                  min="0'"
+                  max="100"
+                  step={1}
+                  value={getLength()}
+                  onChange={setLength}
+                ></input>
+                <div className="Graph-SliderValue">{getLength()}</div>
               </div>
             </div>
           </div>
